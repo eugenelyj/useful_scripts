@@ -32,7 +32,6 @@ def upload_to_hf(folder_path, repo_id):
                 repo_type="dataset"
             )
             print(f"Successfully uploaded {folder_path} to {repo_id}")
-            exit(-1)
         except Exception as e:
             print(f"Error uploading dataset: {str(e)}")
 
