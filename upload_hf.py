@@ -14,24 +14,40 @@ def get_relative_path(base_path, full_path):
 
 def list_folders(base_path):
     """List all folders under the given path"""
-    folders = []
-    for root, dirs, files in os.walk(base_path):
-        if dirs:  # if there are directories in this level
-            folders.extend([os.path.join(root, d) for d in dirs])
-    return folders if folders else [base_path]
+    flist = []
+    for f in os.listdir(base_path):
+        ftype = "f" if os.path.isfile(os.path.join(base_path, f)) else "d"
+        flist.append({
+            "rel": f,
+            "abs": os.path.join(base_path, f),
+            "type": ftype
+        })
 
-def upload_to_hf(folder_path, repo_id):
+    return flist
+
+def upload_to_hf(folder_path, remote_path, repo_id):
     """Upload folder to Hugging Face"""
-    for folder in list_folders(folder_path):
+    for fdata in list_folders(folder_path):
         try:
             api = HfApi()
-            api.upload_folder(
-                folder_path=folder,
-                path_in_repo=folder,
-                repo_id=repo_id,
-                repo_type="dataset"
-            )
-            print(f"Successfully uploaded {folder} to {repo_id}")
+            ftype = fdata["type"]
+            rel_path = fdata["rel"]
+            abs_path = fdata["abs"]
+            if ftype == "d":
+                api.upload_folder(
+                    folder_path=abs_path,
+                    path_in_repo=rel_path,
+                    repo_id=repo_id,
+                    repo_type="dataset"
+                )
+            else:
+                api.upload_file(
+                    path_or_fileobj=abs_path,
+                    path_in_repo=rel_path,
+                    repo_id=repo_id,
+                    repo_type="dataset"
+                )
+            print(f"Successfully uploaded {rel_path} to {repo_id}")
         except Exception as e:
             print(f"Error uploading dataset: {str(e)}")
 
@@ -39,7 +55,8 @@ def main():
     parser = argparse.ArgumentParser(description="Upload folder to Hugging Face dataset")
     parser.add_argument("--token", required=True, help="Hugging Face API token")
     parser.add_argument("--repo_id", required=True, help="Repository ID (format: username/dataset-name)")
-    parser.add_argument("--base_path", required=True, help="Base path containing folders to upload")
+    parser.add_argument("--local_path", required=True, help="Local path containing folders to upload")
+    parser.add_argument("--remote_path", required=True, help="Remote path to upload to")
     
     args = parser.parse_args()
     
@@ -47,7 +64,7 @@ def main():
     login_to_hf(args.token)
     
     # Upload to Hugging Face
-    upload_to_hf(args.base_path, args.repo_id)
+    upload_to_hf(args.local_path, args.remote_path, args.repo_id)
 
 if __name__ == "__main__":
     main()
